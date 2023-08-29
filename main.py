@@ -8,10 +8,13 @@ from selenium.webdriver.common.keys import Keys
 import selenium.webdriver.support.expected_conditions as ec
 import pandas as pd
 
+#TODO Use args to determine what states, or all
+#TODO Add log to log ending zip when crash
 #TODO More consistent login page handling.
 #TODO More consistent waits.
+#TODO Fix occasional double download
 
-#waits for element to load and clicks
+#waits for element to load and clicks, if keys are passed sends keys
 def wait_and_click(css_selector, keys=None):
     wait.until(ec.all_of(ec.presence_of_element_located(['css selector', css_selector])))
     element = driver.find_element('css selector', css_selector)
@@ -19,18 +22,24 @@ def wait_and_click(css_selector, keys=None):
     if keys != None:
         element.send_keys(keys)
 
-def search_zip(zip_code):
+#trys to click to close tag from table page search bar
+def close_tags(css_selector):
     
-    #try statements clear last tag if exists
     try:
-        driver.find_element('css selector', '.btn-clear-search-input').click()
+        driver.find_element('css selector',  css_selector).click()
     except (NoSuchElementException, TimeoutException, ElementNotInteractableException):
         pass
-    
+
+
+#searches the zip code in the search bar of the table page
+def search_zip(zip_code):
     try:
-        driver.find_element('css selector', '.Tag__remove').click()
-    except (NoSuchElementException, TimeoutException):
+        driver.find_element('css selector','button.Button:nth-child(3)').click()
+    except NoSuchElementException:
         pass
+    #clears past search tags
+    close_tags('.btn-clear-search-input')
+    close_tags('.Tag__remove')
 
     #search bar
     wait_and_click('.search-container')
@@ -51,7 +60,8 @@ def first_search():
 
 
 def download_csv():
-    #table
+
+    #clicks table - #TODO Check if redundant, table may stay active
     wait_and_click('.displayModeToggler > button:nth-child(2)')
 
     #download
@@ -145,8 +155,8 @@ wait = WebDriverWait(driver, timeout=10)
 url = 'https://www.redfin.com/'
 driver.get(url)
 
-bad_zips_df = pd.DataFrame({'Zip Codes' : []})
-bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
+#bad_zips_df = pd.DataFrame({'Zip Codes' : []})
+#bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
 bad_zips_df = pd.read_csv('bad_zipcodes.csv')
 
 login()
@@ -156,24 +166,29 @@ download_csv()
 bad_zip_list = bad_zips_df['Zip Codes'].to_list()
 
 
-for zip_code in united_states_zip_code_list:
-    if zip_code not in bad_zip_list:
-        wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
-        search_zip(zip_code)
-        try:
-            time.sleep(2)
-            driver.find_element('css selector', '.guts')
-            if driver.find_element('css selector', '.header > h3:nth-child(2)').text.split()[0] == 'Sorry,':
-                print(zip_code)
-                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
-                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
-            wait_and_click('button.Button:nth-child(3)')
-        except NoSuchElementException:
-            home_number = (driver.find_element('css selector', '.homes'))
-            home_number = int(home_number.text.split()[0].replace(',',""))
-            if home_number > 0:
-                time.sleep(3)    
-                download_csv()
 
+for zip_code in united_states_zip_code_list:
+    #TODO Better logging
+    try:
+        if zip_code not in bad_zip_list:
+            wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+            search_zip(zip_code)
+            try:
+                time.sleep(2)
+                driver.find_element('css selector', '.guts')
+                if driver.find_element('css selector', '.header > h3:nth-child(2)').text.split()[0] == 'Sorry,':
+                    print(zip_code)
+                    bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
+                    bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
+                wait_and_click('button.Button:nth-child(3)')
+            except NoSuchElementException:
+                wait.until(ec.invisibility_of_element(['css selector', '.cell']))
+                home_number = (driver.find_element('css selector', '.homes'))
+                home_number = int(home_number.text.split()[0].replace(',',""))
+                if home_number > 0:
+                    download_csv()
+    except Exception:
+        print(zip_code)
+        break
         
         
