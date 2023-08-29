@@ -12,7 +12,7 @@ import pandas as pd
 #TODO Add log to log ending zip when crash
 #TODO More consistent login page handling.
 #TODO More consistent waits.
-#TODO Fix occasional double download
+#TODO Fix occasional double download (This may be issue with multiple zip codes on )
 
 #waits for element to load and clicks, if keys are passed sends keys
 def wait_and_click(css_selector, keys=None):
@@ -62,7 +62,7 @@ def first_search():
 def download_csv():
 
     #clicks table - #TODO Check if redundant, table may stay active
-    wait_and_click('.displayModeToggler > button:nth-child(2)')
+    #wait_and_click('.displayModeToggler > button:nth-child(2)')
 
     #download
     wait_and_click("html body.customer-facing.customer-ui.route-SearchPage.tableMode div#content div div#right-container.map.collapsedList div#results-display div div.HomeViews div.DownloadAndSave div.viewingPage a#download-and-save.downloadLink")
@@ -138,7 +138,16 @@ states_dict = { 'Alaska' : [num for num in range(99501,99950)],
                'Alabama' : [num for num in range(35004, 36926)],
                'Arizona' : [num for num in range(85001, 86557)],
                'Arkansas' : [num for num in range(71601,72960)],
-               'California' : [num for num in range(90001,96163)]}
+               'California' : [num for num in range(90001,96163)],
+               'Colorado' : [num for num in range(80001,81659)],
+               'Connecticut' : [num for num in range(6001, 6390)] + [num for num in range(6401,6929)],
+               'District of Columbia': [num for num in range(20001,20040)] + [num for num in range(20042,20600)] + [20799],
+               'Delaware' : [num for num in range(19701,19981)],
+               'Florida' : [num for num in range(32004,34998)],
+               'Georgia' : [num for num in range(30001,32000)] + [39901],
+               'Hawaii' : [num for num in range(96701,86899)],
+               'Iowa' : [num for num in range(50001,52810)] + [68119, 68120],
+               }
 
 united_states_zip_code_list = []
 for zip_codes_list in states_dict.values():
@@ -171,7 +180,7 @@ for zip_code in united_states_zip_code_list:
     #TODO Better logging
     try:
         if zip_code not in bad_zip_list:
-            wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+            
             search_zip(zip_code)
             try:
                 time.sleep(2)
@@ -186,6 +195,7 @@ for zip_code in united_states_zip_code_list:
                 home_number = (driver.find_element('css selector', '.homes'))
                 home_number = int(home_number.text.split()[0].replace(',',""))
                 if home_number > 0:
+                    wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
                     download_csv()
     except Exception:
         print(zip_code)
