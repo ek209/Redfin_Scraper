@@ -6,9 +6,10 @@ import time
 import os
 from selenium.webdriver.common.keys import Keys
 import selenium.webdriver.support.expected_conditions as ec
+import pandas as pd
 
-#TODO Handle bad zip codes
-#TODO Handle waits better (use implicit waits)
+#TODO More consistent login page handling.
+#TODO More consistent waits.
 
 #waits for element to load and clicks
 def wait_and_click(css_selector, keys=None):
@@ -37,10 +38,6 @@ def search_zip(zip_code):
     #send keys to search bar
     wait_and_click('#search-box-input', f"Zip: '{zip_code}'")
     wait_and_click('#search-box-input', Keys.ENTER)
-
-    #small_search_send = driver.find_element('css selector', 'button.inline-block')
-    #small_search_send.click()
-    #time.sleep(5)
 
 def first_search():
     first_zip = united_states_zip_code_list[0]
@@ -128,7 +125,10 @@ def login():
 
 
 states_dict = { 'Alaska' : [num for num in range(99501,99950)],
-               'Alabama' : [num for num in range(35004, 36926)]}
+               'Alabama' : [num for num in range(35004, 36926)],
+               'Arizona' : [num for num in range(85001, 86557)],
+               'Arkansas' : [num for num in range(71601,72960)],
+               'California' : [num for num in range(90001,96163)]}
 
 united_states_zip_code_list = []
 for zip_codes_list in states_dict.values():
@@ -144,19 +144,29 @@ wait = WebDriverWait(driver, timeout=10)
 
 url = 'https://www.redfin.com/'
 driver.get(url)
-#time.sleep(4)
+
+bad_zips_df = pd.DataFrame({'Zip Codes' : []})
+bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
+bad_zips_df = pd.read_csv('bad_zipcodes.csv')
 
 login()
 first_search()
 set_search_settings()
-list = []
+download_csv()
+bad_zip_list = bad_zips_df['Zip Codes'].to_list()
+
+
 for zip_code in united_states_zip_code_list:
-    if zip_code not in []:
+    if zip_code not in bad_zip_list:
+        wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+        search_zip(zip_code)
         try:
-            time.sleep(1)
+            time.sleep(2)
             driver.find_element('css selector', '.guts')
             if driver.find_element('css selector', '.header > h3:nth-child(2)').text.split()[0] == 'Sorry,':
                 print(zip_code)
+                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
+                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
             wait_and_click('button.Button:nth-child(3)')
         except NoSuchElementException:
             home_number = (driver.find_element('css selector', '.homes'))
@@ -165,6 +175,5 @@ for zip_code in united_states_zip_code_list:
                 time.sleep(3)    
                 download_csv()
 
-        search_zip(zip_code)
-        wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+        
         
