@@ -32,64 +32,9 @@ def close_tags(css_selector):
     except (NoSuchElementException, TimeoutException, ElementNotInteractableException):
         pass
 
-
-#searches the zip code in the search bar of the table page
-def search_zip(zip_code):
-    try:
-        driver.find_element('css selector','button.Button:nth-child(3)').click()
-    except NoSuchElementException:
-        pass
-    #clears past search tags
-    close_tags('.btn-clear-search-input')
-    close_tags('.Tag__remove')
-
-    #search bar
-    wait_and_click('.search-container')
-
-    #send keys to search bar
-    wait_and_click('#search-box-input', f"Zip: '{zip_code}'")
-    wait_and_click('#search-box-input', Keys.ENTER)
-
-def first_search():
-    first_zip = zip_code_list[0]
-    zip_code_list.pop(0)
-
-    #enters first zip into search bar
-    wait_and_click('#search-box-input', first_zip)
-
-    #sends search
-    wait_and_click('#tabContentId0 > div > div > form > div.search-container.inline-block > button')
-
-
 def download_csv():
     #download
     wait_and_click("#download-and-save")
-
-def set_search_settings():
-    
-    time.sleep(5)
-    #show table button
-    wait_and_click('button.ModeOption:nth-child(2)')
-
-    #for sale button
-    wait_and_click('div.CustomFilter:nth-child(1) > div:nth-child(1)')
-
-    #expand
-    wait_and_click('#solds-expandable-segment > div:nth-child(2) > div:nth-child(1)')
-
-    #sold
-    time.sleep(3)
-    wait_and_click('div.expanded:nth-child(1) > div:nth-child(1) > span:nth-child(1) > span:nth-child(1) > div:nth-child(1) > div:nth-child(1) > label:nth-child(1) > input:nth-child(1)')
-    
-    # year button
-    time.sleep(3)
-    wait_and_click('div.padding-left-medium:nth-child(6) > span:nth-child(1) > span:nth-child(1) > div:nth-child(1) > div:nth-child(1) > label:nth-child(1) > input:nth-child(1)')
-
-    #collapse
-    wait_and_click('div.expanded:nth-child(2) > div:nth-child(1)')
-
-    #done button
-    wait_and_click('button.primary:nth-child(2)')
 
 def login():
     rf_email = os.environ.get('REDFIN_EMAIL')
@@ -144,12 +89,8 @@ driver.get(url)
 #bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
 bad_zips_df = pd.read_csv('bad_zipcodes.csv')
 
-##TODO attempt to bypass first_search by going directly to filtered url
 zip_code_list = states_dict[state]
 login()
-#first_search()
-#set_search_settings()
-#download_csv()
 bad_zip_list = bad_zips_df['Zip Codes'].to_list()
 
 for zip_code in zip_code_list: #zip_code_list:
