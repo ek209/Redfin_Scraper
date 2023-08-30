@@ -63,7 +63,7 @@ def first_search():
 
 def download_csv():
     #download
-    wait_and_click("html body.customer-facing.customer-ui.route-SearchPage.tableMode div#content div div#right-container.map.collapsedList div#results-display div div.HomeViews div.DownloadAndSave div.viewingPage a#download-and-save.downloadLink")
+    wait_and_click("#download-and-save")
 
 def set_search_settings():
     
@@ -144,54 +144,38 @@ driver.get(url)
 #bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
 bad_zips_df = pd.read_csv('bad_zipcodes.csv')
 
+##TODO attempt to bypass first_search by going directly to filtered url
 zip_code_list = states_dict[state]
 login()
-first_search()
-set_search_settings()
-download_csv()
+#first_search()
+#set_search_settings()
+#download_csv()
 bad_zip_list = bad_zips_df['Zip Codes'].to_list()
-
-
 
 for zip_code in zip_code_list: #zip_code_list:
     #TODO Better logging
-    try:
-        if zip_code not in bad_zip_list:
-            
-            driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
-            
-            if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
-                print('404 or sitemap')
-                print(zip_code)
-                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
-                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
-            else:
-                wait.until(ec.invisibility_of_element(['css selector', '.cell']))
-                home_number = (driver.find_element('css selector', '.homes'))
-                home_number = int(home_number.text.split()[0].replace(',',""))
-                if home_number > 0:
-                    wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
-                    download_csv()
-            ##checks to see if two different elements exist
-            ##TODO possibly use url checks instead to speed up and clean up code
-            '''try:
-                time.sleep(2)
-                try:
-                    driver.find_element('css selector', '.neighborhood').is_displayed()
-                except NoSuchElementException:
-                    driver.find_element('css selector', '.extraLink > a:nth-child(1)').is_displayed()
-                print(zip_code)
-                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
-                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
-            except NoSuchElementException:
-                wait.until(ec.invisibility_of_element(['css selector', '.cell']))
-                home_number = (driver.find_element('css selector', '.homes'))
-                home_number = int(home_number.text.split()[0].replace(',',""))
-                if home_number > 0:
-                    wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
-                    download_csv()'''
+    #try:
+    if zip_code not in bad_zip_list:
+        
+        driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
+        
+        #checks if zip code url is bad, adds to bad zip codes
+        if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
+            bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
+            bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
+        
+        #makes sure there is a home sold before downloading
+        else:
+            wait.until(ec.invisibility_of_element(['css selector', '.cell']))
+            home_number = (driver.find_element('css selector', '.homes'))
+            home_number = int(home_number.text.split()[0].replace(',',""))
+            if home_number > 0:
+                wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+                download_csv()
+    '''
     except Exception:
         print(zip_code)
         break
+    '''
         
         
