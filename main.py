@@ -12,7 +12,6 @@ from zip_codes import states_dict
 
 #TODO Use args to determine what states, or all
 #TODO Add log to log ending zip when crash
-#TODO More consistent login page handling.
 #TODO More consistent waits.
 
 #waits for element to load and clicks, if keys are passed sends keys
@@ -30,39 +29,14 @@ def download_csv():
 def login():
     rf_email = os.environ.get('REDFIN_EMAIL')
     rf_password = os.environ.get('REDFIN_PASSWORD')
-    time.sleep(3)
-
-    #google container
-    wait_and_click('#credential_picker_container > iframe:nth-child(1)')
-    iframe = driver.find_element('css selector', '#credential_picker_container > iframe:nth-child(1)')
-    driver.switch_to.frame(iframe)
-    time.sleep(.2)
-    
-    #google close
-    wait_and_click('#close')
-    driver.switch_to.default_content()
-
-    #close qr box popup
-    try:
-        wait_and_click('.closeIcon')
-    except (NoSuchElementException, TimeoutException):
-        pass
-
-    #login button
-    wait_and_click('.margin-horiz-medium > button:nth-child(1)')
-    
-    #enters email
-    wait_and_click('span.input:nth-child(1) > div:nth-child(1) > input:nth-child(1)', rf_email)
-
-    #clicks continue button
-    wait_and_click('.submitButton')
-
-    #enters password
+    wait_and_click('input.text', rf_email)
     wait_and_click('.password', rf_password)
+
+    #signin button
+    wait_and_click('button.button:nth-child(5)')
     
-    #submits password
-    wait_and_click('.submitButton')
     time.sleep(2)
+
     
 state = 'Iowa'
 download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
@@ -73,7 +47,7 @@ options.set_preference("browser.download.dir", download_path)
 driver = webdriver.Firefox(options=options)
 wait = WebDriverWait(driver, timeout=10)
 
-url = 'https://www.redfin.com/'
+url = 'https://www.redfin.com/login'
 driver.get(url)
 
 #bad_zips_df = pd.DataFrame({'Zip Codes' : []})
