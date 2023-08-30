@@ -2,11 +2,13 @@ from selenium import webdriver
 from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException, TimeoutException
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
+import datetime
 import time
 import os
 from selenium.webdriver.common.keys import Keys
 import selenium.webdriver.support.expected_conditions as ec
 import pandas as pd
+from zip_codes import states_dict
 
 #TODO Use args to determine what states, or all
 #TODO Add log to log ending zip when crash
@@ -49,8 +51,8 @@ def search_zip(zip_code):
     wait_and_click('#search-box-input', Keys.ENTER)
 
 def first_search():
-    first_zip = united_states_zip_code_list[0]
-    united_states_zip_code_list.pop(0)
+    first_zip = zip_code_list[0]
+    zip_code_list.pop(0)
 
     #enters first zip into search bar
     wait_and_click('#search-box-input', first_zip)
@@ -60,10 +62,6 @@ def first_search():
 
 
 def download_csv():
-
-    #clicks table - #TODO Check if redundant, table may stay active
-    #wait_and_click('.displayModeToggler > button:nth-child(2)')
-
     #download
     wait_and_click("html body.customer-facing.customer-ui.route-SearchPage.tableMode div#content div div#right-container.map.collapsedList div#results-display div div.HomeViews div.DownloadAndSave div.viewingPage a#download-and-save.downloadLink")
 
@@ -75,7 +73,6 @@ def set_search_settings():
 
     #for sale button
     wait_and_click('div.CustomFilter:nth-child(1) > div:nth-child(1)')
-    #time.sleep(3)
 
     #expand
     wait_and_click('#solds-expandable-segment > div:nth-child(2) > div:nth-child(1)')
@@ -131,29 +128,8 @@ def login():
     wait_and_click('.submitButton')
     time.sleep(2)
     
-
-
-
-states_dict = { 'Alaska' : [num for num in range(99501,99950)],
-               'Alabama' : [num for num in range(35004, 36926)],
-               'Arizona' : [num for num in range(85001, 86557)],
-               'Arkansas' : [num for num in range(71601,72960)],
-               'California' : [num for num in range(90001,96163)],
-               'Colorado' : [num for num in range(80001,81659)],
-               'Connecticut' : [num for num in range(6001, 6390)] + [num for num in range(6401,6929)],
-               'District of Columbia': [num for num in range(20001,20040)] + [num for num in range(20042,20600)] + [20799],
-               'Delaware' : [num for num in range(19701,19981)],
-               'Florida' : [num for num in range(32004,34998)],
-               'Georgia' : [num for num in range(30001,32000)] + [39901],
-               'Hawaii' : [num for num in range(96701,86899)],
-               'Iowa' : [num for num in range(50001,52810)] + [68119, 68120],
-               }
-
-united_states_zip_code_list = []
-for zip_codes_list in states_dict.values():
-    united_states_zip_code_list += zip_codes_list
-
-download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH')
+state = 'Alabama'
+download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
 options = Options()
 options.set_preference("browser.download.folderList", 2)
 options.set_preference("browser.download.manager.showWhenStarting", False)
@@ -168,6 +144,7 @@ driver.get(url)
 #bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
 bad_zips_df = pd.read_csv('bad_zipcodes.csv')
 
+zip_code_list = states_dict[state]
 login()
 first_search()
 set_search_settings()
@@ -176,20 +153,24 @@ bad_zip_list = bad_zips_df['Zip Codes'].to_list()
 
 
 
-for zip_code in united_states_zip_code_list:
+for zip_code in zip_code_list: #zip_code_list:
     #TODO Better logging
     try:
         if zip_code not in bad_zip_list:
             
-            search_zip(zip_code)
+            driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
+            
+            ##checks to see if two different elements exist
+            ##TODO possibly use url checks instead to speed up and clean up code
             try:
                 time.sleep(2)
-                driver.find_element('css selector', '.guts')
-                if driver.find_element('css selector', '.header > h3:nth-child(2)').text.split()[0] == 'Sorry,':
-                    print(zip_code)
-                    bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
-                    bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
-                wait_and_click('button.Button:nth-child(3)')
+                try:
+                    driver.find_element('css selector', '.neighborhood').is_displayed()
+                except NoSuchElementException:
+                    driver.find_element('css selector', '.extraLink > a:nth-child(1)').is_displayed()
+                print(zip_code)
+                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
+                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
             except NoSuchElementException:
                 wait.until(ec.invisibility_of_element(['css selector', '.cell']))
                 home_number = (driver.find_element('css selector', '.homes'))
