@@ -14,7 +14,6 @@ from zip_codes import states_dict
 #TODO Add log to log ending zip when crash
 #TODO More consistent login page handling.
 #TODO More consistent waits.
-#TODO Fix occasional double download (This may be issue with multiple zip codes on )
 
 #waits for element to load and clicks, if keys are passed sends keys
 def wait_and_click(css_selector, keys=None):
@@ -23,14 +22,6 @@ def wait_and_click(css_selector, keys=None):
     element.click()
     if keys != None:
         element.send_keys(keys)
-
-#trys to click to close tag from table page search bar
-def close_tags(css_selector):
-    
-    try:
-        driver.find_element('css selector',  css_selector).click()
-    except (NoSuchElementException, TimeoutException, ElementNotInteractableException):
-        pass
 
 def download_csv():
     #download
