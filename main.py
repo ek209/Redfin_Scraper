@@ -12,7 +12,6 @@ from zip_codes import states_dict
 
 #TODO Use args to determine what states, or all
 #TODO Add log to log ending zip when crash
-#TODO More consistent waits.
 
 #waits for element to load and clicks, if keys are passed sends keys
 def wait_and_click(css_selector, keys=None):
@@ -23,7 +22,6 @@ def wait_and_click(css_selector, keys=None):
         element.send_keys(keys)
 
 def download_csv():
-    #download
     wait_and_click("#download-and-save")
 
 def login():
@@ -37,13 +35,17 @@ def login():
     
     time.sleep(2)
 
+def set_options():
+    download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
+    options = Options()
+    options.add_argument('-headless')
+    options.set_preference("browser.download.folderList", 2)
+    options.set_preference("browser.download.manager.showWhenStarting", False)
+    options.set_preference("browser.download.dir", download_path)
+    return options
     
 state = 'Iowa'
-download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
-options = Options()
-options.set_preference("browser.download.folderList", 2)
-options.set_preference("browser.download.manager.showWhenStarting", False)
-options.set_preference("browser.download.dir", download_path)
+options = set_options()
 driver = webdriver.Firefox(options=options)
 wait = WebDriverWait(driver, timeout=10)
 
