@@ -128,7 +128,7 @@ def login():
     wait_and_click('.submitButton')
     time.sleep(2)
     
-state = 'Alabama'
+state = 'Iowa'
 download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
 options = Options()
 options.set_preference("browser.download.folderList", 2)
@@ -160,9 +160,21 @@ for zip_code in zip_code_list: #zip_code_list:
             
             driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
             
+            if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
+                print('404 or sitemap')
+                print(zip_code)
+                bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
+                bad_zips_df.to_csv('bad_zipcodes.csv', index=False)
+            else:
+                wait.until(ec.invisibility_of_element(['css selector', '.cell']))
+                home_number = (driver.find_element('css selector', '.homes'))
+                home_number = int(home_number.text.split()[0].replace(',',""))
+                if home_number > 0:
+                    wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
+                    download_csv()
             ##checks to see if two different elements exist
             ##TODO possibly use url checks instead to speed up and clean up code
-            try:
+            '''try:
                 time.sleep(2)
                 try:
                     driver.find_element('css selector', '.neighborhood').is_displayed()
@@ -177,7 +189,7 @@ for zip_code in zip_code_list: #zip_code_list:
                 home_number = int(home_number.text.split()[0].replace(',',""))
                 if home_number > 0:
                     wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
-                    download_csv()
+                    download_csv()'''
     except Exception:
         print(zip_code)
         break
