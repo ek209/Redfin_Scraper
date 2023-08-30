@@ -13,6 +13,14 @@ from zip_codes import states_dict
 #TODO Use args to determine what states, or all
 #TODO Add log to log ending zip when crash
 
+def load_zip_url():
+    while True:
+        try:
+            driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
+            break
+        except TimeoutException:
+            pass
+
 #waits for element to load and clicks, if keys are passed sends keys
 def wait_and_click(css_selector, keys=None):
     wait.until(ec.all_of(ec.presence_of_element_located(['css selector', css_selector])))
@@ -38,7 +46,7 @@ def login():
 def set_options():
     download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
     options = Options()
-    options.add_argument('-headless')
+    #options.add_argument('-headless')
     options.set_preference("browser.download.folderList", 2)
     options.set_preference("browser.download.manager.showWhenStarting", False)
     options.set_preference("browser.download.dir", download_path)
@@ -64,9 +72,8 @@ for zip_code in zip_code_list: #zip_code_list:
     #TODO Better logging
     #try:
     if zip_code not in bad_zip_list:
-        
-        driver.get(f'https://www.redfin.com/zipcode/{zip_code}/filter/include=sold-1yr')
-        
+        load_zip_url()
+
         #checks if zip code url is bad, adds to bad zip codes
         if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
             bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
