@@ -1,3 +1,14 @@
+import pandas as pd
+
+#loads or creates bad_zipcode file into dataframe and list
+def bad_zips_load(bad_zips_path):
+    try:
+        bad_zips_df = pd.read_csv(bad_zips_path)
+    except FileNotFoundError:
+        bad_zips_df = pd.DataFrame({'Zip Codes' : []})
+        bad_zips_df.to_csv(bad_zips_path, index=False)
+    return bad_zips_df, bad_zips_df['Zip Codes'].to_list()
+
 states_dict = { 'Alaska' : [num for num in range(99501,99950)],
                'Alabama' : [num for num in range(35004, 36926)],
                'Arizona' : [num for num in range(85001, 86557)],
