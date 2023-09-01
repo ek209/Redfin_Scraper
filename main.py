@@ -7,7 +7,17 @@ import time
 import os
 import selenium.webdriver.support.expected_conditions as ec
 import pandas as pd
-from zip_codes import states_dict, bad_zips_load
+from zip_codes import states_dict
+import sqlite3
+
+con = sqlite3.connect("rf_data.db")
+cur = con.cursor()
+try:
+    cur.execute("CREATE TABLE bad_zips(zip_code int PRIMARY KEY)")
+    cur.execute("CREATE TABLE region(region_id int PRIMARY KEY, market varchar(255) NOT NULL, region_type_id int NOT NULL, region_id_search_value varchar(255) UNIQUE NOT NULL)")
+except sqlite3.OperationalError:
+    pass
+cur.close()
 
 #TODO Use args to determine what states, or all
 #TODO Add log to log ending zip when crash
@@ -47,7 +57,7 @@ def login():
     wait_and_click('button.button:nth-child(5)')
     
     time.sleep(2)
-
+    
 def set_options():
     download_path = os.environ.get('REDFIN_CSV_DOWNLOAD_PATH') + f'\\{datetime.date.today()}\\{state}'
     options = Options()
@@ -58,9 +68,22 @@ def set_options():
     return options
     
 state = 'United States'
-bad_zips_path = 'bad_zipcodes.csv'
-bad_zips_df, bad_zip_list = bad_zips_load(bad_zips_path)
+cur = con.cursor()
+bad_zip_list = [zip[0] for zip in cur.execute('SELECT zip_code FROM bad_zips').fetchall()]
+cur.close()
 zip_code_list = states_dict[state]
+cur = con.cursor()
+'''
+for zip in bad_zip_list:
+    try:
+        cur.execute(f'INSERT INTO bad_zips VALUES ({zip})')
+        con.commit()
+    except sqlite3.OperationalError:
+        pass
+'''
+cur.close()
+print(bad_zip_list)
+    
 try:
     region_data = pd.read_csv('region_data.csv')
 except FileNotFoundError:
@@ -87,8 +110,13 @@ for zip_code in zip_code_list:
 
                 #checks if zip code url is bad, adds to bad zip codes
                 if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
-                    bad_zips_df.loc[len(bad_zips_df.index)] = {'Zip Codes' : zip_code}
-                    bad_zips_df.to_csv(bad_zips_path, index=False)
+                    cur = con.cursor()
+                    try:
+                        cur.execute(f'INSERT INTO bad_zips VALUES ({zip_code})')
+                        con.commit()
+                    except sqlite3.OperationalError:
+                        pass
+                    cur.close()
                     break
                 
                 #makes sure there is a home sold before downloading
