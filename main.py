@@ -8,15 +8,7 @@ import os
 import selenium.webdriver.support.expected_conditions as ec
 from zip_codes import states_dict
 import sqlite3
-
-con = sqlite3.connect("rf_data.db")
-cur = con.cursor()
-try:
-    cur.execute("CREATE TABLE bad_zips(zip_code int PRIMARY KEY)")
-    cur.execute("CREATE TABLE region(region_id int PRIMARY KEY, market varchar(255) NOT NULL, region_type_id int NOT NULL, region_id_search_value varchar(255) UNIQUE NOT NULL)")
-except sqlite3.OperationalError:
-    pass
-cur.close()
+from database import db_connect_and_create, db_load_zip_lists, db_add_bad_zip, db_add_region_data
 
 def init_driver_wait():
     driver = webdriver.Firefox(options=options)
@@ -61,11 +53,9 @@ def set_options():
     options.set_preference("browser.download.dir", download_path)
     return options
     
+db_connect_and_create()
+bad_zip_list, good_zip_list = db_load_zip_lists()
 state = 'United States'
-cur = con.cursor()
-bad_zip_list = [zip[0] for zip in cur.execute('SELECT zip_code FROM bad_zips').fetchall()]
-good_zip_list = [int(zip[3]) for zip in cur.execute('SELECT * FROM region').fetchall()]
-cur.close()
 
 zip_code_list = states_dict[state]
 options = set_options()
@@ -83,13 +73,7 @@ for zip_code in zip_code_list:
 
                 #checks if zip code url is bad, adds to bad zip codes db
                 if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
-                    cur = con.cursor()
-                    try:
-                        cur.execute('INSERT INTO bad_zips VALUES ?', zip_code)
-                        con.commit()
-                    except sqlite3.OperationalError:
-                        pass
-                    cur.close()
+                    db_add_bad_zip(zip_code)
                     break
                 
                 #waits for map to load before getting data
@@ -97,13 +81,8 @@ for zip_code in zip_code_list:
                     wait.until(ec.invisibility_of_element(['css selector', '.cell']))
                     wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
                     dict = driver.execute_script('return dataLayerInitializationValues')
-                    cur = con.cursor()
-                    try:
-                        cur.execute('INSERT INTO region VALUES (?, ?, ?, ?)', (dict['region_id'], dict['session']['searchMarket'], dict['region_type_id'], zip_code))
-                        con.commit()
-                    except sqlite3.OperationalError:
-                        pass
-                    cur.close()
+                    params = (dict['region_id'], dict['session']['searchMarket'], dict['region_type_id'], zip_code)
+                    db_add_region_data(params)
                     break
             except (TimeoutException, WebDriverException):
                 pass
