@@ -1,12 +1,11 @@
 from selenium import webdriver
-from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException, TimeoutException
+from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException, TimeoutException, WebDriverException
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 import datetime
 import time
 import os
 import selenium.webdriver.support.expected_conditions as ec
-import pandas as pd
 from zip_codes import states_dict
 import sqlite3
 
@@ -18,11 +17,6 @@ try:
 except sqlite3.OperationalError:
     pass
 cur.close()
-
-#TODO Use args to determine what states, or all
-#TODO Add log to log ending zip when crash
-#TODO In process major revamp
-#TODO Collect region ids and market in link directly to api download
 
 def init_driver_wait():
     driver = webdriver.Firefox(options=options)
@@ -70,34 +64,13 @@ def set_options():
 state = 'United States'
 cur = con.cursor()
 bad_zip_list = [zip[0] for zip in cur.execute('SELECT zip_code FROM bad_zips').fetchall()]
+good_zip_list = [int(zip[3]) for zip in cur.execute('SELECT * FROM region').fetchall()]
 cur.close()
-zip_code_list = states_dict[state]
-cur = con.cursor()
-'''
-for zip in bad_zip_list:
-    try:
-        cur.execute(f'INSERT INTO bad_zips VALUES ({zip})')
-        con.commit()
-    except sqlite3.OperationalError:
-        pass
-'''
-cur.close()
-print(bad_zip_list)
-    
-try:
-    region_data = pd.read_csv('region_data.csv')
-except FileNotFoundError:
-    region_data = pd.DataFrame({'Region ID' : [],
-                                'Market' : [],
-                                'Region Type ID' : [],
-                                'RF Search Value' : []})
-    region_data.to_csv('region_data.csv', index=False)
 
+zip_code_list = states_dict[state]
 options = set_options()
 driver, wait = init_driver_wait()
 login()
-good_zip_list = region_data['RF Search Value'].to_list()
-print(good_zip_list)
 for zip_code in zip_code_list:    
     #TODO Better logging
     #try:
@@ -108,31 +81,31 @@ for zip_code in zip_code_list:
                 #driver.get(f'https://www.redfin.com/stingray/api/gis-csv?al=2&has_deal=false&has_dishwasher=false&has_laundry_facility=false&has_laundry_hookups=false&has_parking=false&has_pool=false&has_short_term_lease=false&include_pending_homes=false&isRentals=false&is_furnished=false&market={state.lower()}num_homes=35000&ord=redfin-recommended-asc&page_number=1&region_id=22614&region_type=2&sold_within_days=1825&status=9&travel_with_traffic=false&travel_within_region=false&uipt=1,2,3,4,5,6,7,8&utilities_included=false&v=8')
                 time.sleep(2)
 
-                #checks if zip code url is bad, adds to bad zip codes
+                #checks if zip code url is bad, adds to bad zip codes db
                 if driver.current_url == 'https://www.redfin.com/sitemap' or driver.current_url == 'https://www.redfin.com/404':
                     cur = con.cursor()
                     try:
-                        cur.execute(f'INSERT INTO bad_zips VALUES ({zip_code})')
+                        cur.execute('INSERT INTO bad_zips VALUES ?', zip_code)
                         con.commit()
                     except sqlite3.OperationalError:
                         pass
                     cur.close()
                     break
                 
-                #makes sure there is a home sold before downloading
+                #waits for map to load before getting data
                 else:
                     wait.until(ec.invisibility_of_element(['css selector', '.cell']))
                     wait.until(ec.invisibility_of_element(['css selector', '.progress-bar']))
                     dict = driver.execute_script('return dataLayerInitializationValues')
-                    market = driver.execute_script('return searchMarket')
-                    df_dict = { "Region ID" : dict['region_id'],
-                                'Market' : market,
-                                'Region Type ID' : dict['region_type_id'],
-                                'RF Search Value' : zip_code}
-                    region_data.loc[len(region_data.index)] = df_dict
-                    region_data.to_csv('region_data.csv', index=False)
+                    cur = con.cursor()
+                    try:
+                        cur.execute('INSERT INTO region VALUES (?, ?, ?, ?)', (dict['region_id'], dict['session']['searchMarket'], dict['region_type_id'], zip_code))
+                        con.commit()
+                    except sqlite3.OperationalError:
+                        pass
+                    cur.close()
                     break
-            except TimeoutException:
+            except (TimeoutException, WebDriverException):
                 pass
                 
 
