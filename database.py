@@ -37,6 +37,7 @@ def db_add_bad_zip(zip_code):
         pass
     cur.close()
 
+#adds region data to db
 def db_add_region_data(params):
     cur = con.cursor()
     try:
