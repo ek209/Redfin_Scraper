@@ -18,7 +18,6 @@ def create_tables(cur, sql_statements):
         except sqlite3.OperationalError:
             pass
 
-#creates cursor to create tables
 def db_connect_and_create():
     """Creates cursor connection to connect to database and execute table creation statements
 
