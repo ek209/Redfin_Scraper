@@ -6,6 +6,10 @@ from zip_codes import states_dict
 from database import db_connect_and_create, db_load_zip_lists, db_add_bad_zip, db_add_region_data
 from scraper import Scraper
 
+#TODO STARTING REVAMP #2
+#Region ID's are not unique, region_id needs region_type to be unique
+
+
 #splits iterable into n seperate lists, fills extra with padvalue
 def grouper(n, iterable, padvalue=None):
     "grouper(3, 'abcdefg', 'x') --> ('a','b','c'), ('d','e','f'), ('g','x','x')"
