@@ -1,7 +1,7 @@
 import sqlite3
-
+import pandas as pd
 con = sqlite3.connect("rf_data.db")
-
+import datetime as dt
 #TODO Decorate functions to use less functions for create_tables and try_statement
 
 def create_tables(cur, sql_statements):
@@ -28,7 +28,8 @@ def db_connect_and_create():
                     property_type VARCHAR, address VARCHAR, city VARCHAR, state_prov VARCHAR, postal_code INT, price INT, 
                    beds FLOAT, baths FLOAT, location VARCHAR, sqft INT, lot_size INT, year_built INT, days_on_market INT, 
                    price_per_sqft INT, hoa_monthly INT, status VARCHAR, next_open_house_start VARCHAR, next_open_house_end VARCHAR, url VARCHAR,
-                   source VARCHAR, mls INT, lat FLOAT, lng FLOAT, region_id INT, region_id_for_excel_dl INT, PRIMARY KEY(mls, lat, lng, sold_date))''',
+                   source VARCHAR, mls INT, lat FLOAT, lng FLOAT, region_id INT, region_id_for_excel_dl INT,
+                   sold_year INT, sold_month INT, sold_day INT, PRIMARY KEY(mls, lat, lng, sold_date))''',
                     '''CREATE TABLE region_ids(region_id INT, region_type_id INT, region_type_search_id INT,
                     name VARCHAR(255) NOT NULL, leanedName VARCHAR(255) NOT NULL, market VARCHAR(255), 
                     market_id INT, market_display_name VARCHAR(255), url VARCHAR(255) UNIQUE, 
@@ -44,6 +45,34 @@ def db_load_valid(region_type_id):
     valid = [id for id in cur.execute('SELECT region_id, region_type_id FROM region_ids WHERE region_type_id=(?)', (region_type_id,)).fetchall()]
     cur.close()
     return valid
+
+def db_new_sold_dates():
+    con = sqlite3.connect('rf_data.db')
+    cur = con.cursor()
+    data = pd.read_sql(('SELECT *  FROM sold_properties WHERE sold_date IS NOT NULL and sold_year IS NULL'), con)
+    count = data.shape[0]
+    for row in data.values:
+        count = count -1 
+        print(count)
+        sold_date = row[1]
+        try:
+            new_sold_date = dt.datetime.strptime(row[1], "%B-%d-%Y")
+            year = new_sold_date.year
+            day = new_sold_date.day
+            month = new_sold_date.month
+            new_sold_date = new_sold_date.isoformat()
+        except TypeError:
+            continue
+        mls = row[22] 
+        lat = row[23] 
+        lng = row[24]
+        cur.execute('''UPDATE sold_properties
+                    SET sold_year = (?), sold_day = (?), sold_month = (?)
+                    WHERE mls = (?) AND lat = (?) AND lng = (?) AND sold_date = (?)''', (year, day, month, mls, lat, lng, sold_date))
+        con.commit()
+    cur.close()
+
+    con.close()
 
 def db_load_tested(region_type_id):
     """Loads already searched zip codes from the bad_zips table as bad_zip_list
@@ -86,7 +115,7 @@ def db_add_sold_data(params):
     con = sqlite3.connect("rf_data.db")
     cur = con.cursor()
     try:
-        cur.execute('INSERT INTO sold_properties VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', params)
+        cur.execute('INSERT INTO sold_properties VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', params)
         con.commit()
     except (sqlite3.OperationalError, sqlite3.IntegrityError):
         pass

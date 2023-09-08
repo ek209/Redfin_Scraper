@@ -5,6 +5,7 @@ import time
 from threading import Thread
 import pandas as pd
 from io import StringIO
+from datetime import date
 
 #for_sale_url = f'https://www.redfin.com/stingray/api/gis-csv?al=2&has_deal=false&has_dishwasher=false&has_laundry_facility=false&has_laundry_hookups=false&has_parking=false&has_pool=false&has_short_term_lease=false&include_pending_homes=false&isRentals=false&is_furnished=false&num_homes=35000&ord=redfin-recommended-asc&page_number=1&region_id={region_id}&region_type={region_type_id}&status=9&travel_with_traffic=false&travel_within_region=false&uipt=1,2,3,4,5,6,7,8&utilities_included=false&v=8'
 def read_data(id, region_type_id):
@@ -58,8 +59,19 @@ def dl_csv(region_id, region_type_id):
             db_add_sold_data(params)
 
         for (_, series) in csv_df.iterrows():
+            try:
+                sold_date = date.strptime(series.get('SOLD DATE'), format = "%B-%d-%Y")
+                year= sold_date.year
+                day = sold_date.day
+                month = sold_date.month
+            except TypeError:
+                sold_date = None 
+                month = None
+                day = None
+                year = None
+                series.get('SOLD DATE')
             params = (series.get('SALE TYPE'),
-                    series.get('SOLD DATE'),
+                    sold_date,
                     series.get('PROPERTY TYPE'),
                     series.get('ADDRESS'),
                     series.get('CITY'),
@@ -84,7 +96,11 @@ def dl_csv(region_id, region_type_id):
                     series.get('LATITUDE'),
                     series.get('LONGITUDE'),
                     region_id,
-                    region_type_id)
+                    region_type_id,
+                    year,
+                    month,
+                    day
+                    )
             db_add_sold_data(params)
 
 
