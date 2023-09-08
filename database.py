@@ -24,29 +24,28 @@ def db_connect_and_create():
     """
     cur = con.cursor()
     create_tables(cur,
-                  ['''CREATE TABLE tested_ids(region_id INT, region_type INT, PRIMARY KEY(region_id, region_type))'''])
-                    ##'''CREATE TABLE region_ids(region_id INT, region_type_id INT, name VARCHAR(255) NOT NULL, 
-                    ##   cleanedName VARCHAR(255) NOT NULL, market VARCHAR(255) NOT NULL, 
-                    #market_id INT NOT NULL, market_display_name VARCHAR(255) NOT NULL, url VARCHAR(255) UNIQUE,
-                    #  isRedfinServiced BOOLEAN NOT NULL, PRIMARY KEY(region_id, region_type_id))''',
+                  ['''CREATE TABLE sold_properties(sale_type VARCHAR, sold_date VARCHAR,
+                    property_type VARCHAR, address VARCHAR, city VARCHAR, state_prov VARCHAR, postal_code INT, price INT, 
+                   beds FLOAT, baths FLOAT, location VARCHAR, sqft INT, lot_size INT, year_built INT, days_on_market INT, 
+                   price_per_sqft INT, hoa_monthly INT, status VARCHAR, next_open_house_start VARCHAR, next_open_house_end VARCHAR, url VARCHAR,
+                   source VARCHAR, mls INT, lat FLOAT, lng FLOAT, region_id INT, region_id_for_excel_dl INT, PRIMARY KEY(mls, lat, lng, sold_date))''',
+                    '''CREATE TABLE region_ids(region_id INT, region_type_id INT, region_type_search_id INT,
+                    name VARCHAR(255) NOT NULL, leanedName VARCHAR(255) NOT NULL, market VARCHAR(255), 
+                    market_id INT, market_display_name VARCHAR(255), url VARCHAR(255) UNIQUE, 
+                   polygon VARCHAR, isBoundingBox BOOLEAN, isRedfinServiced BOOLEAN NOT NULL, PRIMARY KEY(region_id, region_type_id))''',
+                   '''CREATE TABLE invalid_ids(region_type_search_id INT, region_type_id INT,
+                   PRIMARY KEY (region_type_search_id, region_type_id))'''])
                   #["CREATE TABLE bad_zips(zip_code int PRIMARY KEY)",
                    #"CREATE TABLE region(region_id int PRIMARY KEY, market varchar(255) NOT NULL, region_type_id int NOT NULL, region_id_search_value varchar(255) UNIQUE NOT NULL)"])
     cur.close()
 
-def db_load_zip_lists():
-    """Loads already searched zip codes from the bad_zips table as bad_zip_list
-    and good zip codes from region table
-
-    Returns:
-        List: Two lists, list of bad zip codes, list of good zip codes.
-    """
+def db_load_valid(region_type_id):
     cur = con.cursor()
-    bad_zip_list = [zip[0] for zip in cur.execute('SELECT zip_code FROM bad_zips').fetchall()]
-    good_zip_list = [int(zip[3]) for zip in cur.execute('SELECT * FROM region').fetchall()]
+    valid = [id for id in cur.execute('SELECT region_id, region_type_id FROM region_ids WHERE region_type_id=(?)', (region_type_id,)).fetchall()]
     cur.close()
-    return bad_zip_list, good_zip_list
+    return valid
 
-def db_load_tested():
+def db_load_tested(region_type_id):
     """Loads already searched zip codes from the bad_zips table as bad_zip_list
     and good zip codes from region table
 
@@ -54,56 +53,52 @@ def db_load_tested():
         List: Two lists, list of bad zip codes, list of good zip codes.
     """
     cur = con.cursor()
-    tested = [zip[0] for zip in cur.execute('SELECT region_id FROM tested_ids').fetchall()]
+    invalid = [id[0] for id in cur.execute('SELECT region_type_search_id FROM invalid_ids WHERE region_type_id=(?)',(region_type_id,)).fetchall()]
+    valid = [id[0] for id in cur.execute ('SELECT region_type_search_id FROM region_ids WHERE region_type_id=(?)', (region_type_id,)).fetchall()]
+    tested = set(invalid).union(set(valid))
     cur.close()
     return tested
 
 
-def db_add_bad_zip(zip_code):
-    """Adds bad zip code to bad_zips table, does nothing if operational error
-
-    Args:
-        zip_code (Int): Zip code to add to table
-    """
-    cur = con.cursor()
-    try:
-        cur.execute('INSERT INTO bad_zips VALUES (?)', (zip_code,))
-        con.commit()
-    except sqlite3.OperationalError:
-        pass
-    cur.close()
-
 def db_add_tested_ids(params):
-    """Adds bad zip code to bad_zips table, does nothing if operational error
+    """Adds invalid_id to invalid_ids table, does nothing if operational error
 
     Args:
-        zip_code (Int): Zip code to add to table
+        params (Tuple): Params to add to table 
     """
     con = sqlite3.connect("rf_data.db")
     cur = con.cursor()
     try:
-        cur.execute('INSERT INTO tested_ids VALUES (?,?)', params)
+        cur.execute('INSERT INTO invalid_ids VALUES (?,?)', params)
         con.commit()
     except sqlite3.OperationalError:
         pass
     cur.close()
     con.close()
 
-
-def db_add_region_data(params):
+def db_add_sold_data(params):
     """Adds params list to region table and commits change to db.
     If exception caught it does nothing.
 
     Args:
         params (Tuple): List of values to add to the region db.
     """
+    con = sqlite3.connect("rf_data.db")
     cur = con.cursor()
     try:
-        cur.execute('INSERT INTO region_ids VALUES (?, ?, ?, ?)', params)
+        cur.execute('INSERT INTO sold_properties VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', params)
         con.commit()
-    except sqlite3.OperationalError:
+    except (sqlite3.OperationalError, sqlite3.IntegrityError):
         pass
     cur.close()
+    con.close()
+
+def db_sold_searched():
+    #ids that need to be searched again my prop type [1902]
+    cur = con.cursor()
+    searched = [id for id in cur.execute('SELECT DISTINCT region_id, region_id_for_excel_dl FROM sold_properties').fetchall()]
+    cur.close()
+    return searched
 
 def db_add_new_region_data(params):
     """Adds params list to region table and commits change to db.
@@ -115,11 +110,11 @@ def db_add_new_region_data(params):
     con = sqlite3.connect("rf_data.db")
     cur = con.cursor()
     try:
-        cur.execute('INSERT INTO region_ids VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', params)
+        cur.execute('INSERT INTO region_ids VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', params)
         con.commit()
     except (sqlite3.OperationalError, sqlite3.IntegrityError):
         pass
     cur.close()
-    con.close()
+    con.close
 
 
