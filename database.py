@@ -1,8 +1,11 @@
 import sqlite3
 import pandas as pd
-con = sqlite3.connect("rf_data.db")
+import os
 import datetime as dt
-#TODO Decorate functions to use less functions for create_tables and try_statement
+
+DB_PATH = os.environ.get('RF_DB_URI')
+con = sqlite3.connect(DB_PATH)
+
 
 def create_tables(cur, sql_statements):
     """Executes the sql statements unless there is an operational error. 

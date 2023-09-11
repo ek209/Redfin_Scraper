@@ -4,8 +4,16 @@ import plotly.express as px
 from database import * 
 import sqlite3
 import datetime
+import os
+
+#TODO Make string map for graphs to make text cleaner
+#TODO Import into Personal Website
+#TODO Create tabs to sort location data by categories (TAB INSIDE TAB)
+#TODO dcc.loading for when data is updating.
+#TODO Docstrings comments
 
 app = Dash(__name__, suppress_callback_exceptions=True)
+DB_PATH = os.environ.get('RF_DB_URI')
 GRAPHS = 12
 CITY_GRAPHS = [f"city-graph-{num}" for num in range(0,GRAPHS)]
 STATE_GRAPHS = [f"state-graph-{num}" for num in range(0,GRAPHS)]
@@ -22,26 +30,6 @@ app.layout = html.Div([
     ]),
     html.Div(id='tabs-example-content-1')
 ])
-
-
-
-'''dcc.Dropdown(id='zip-month', 
-                        options=[
-       {'label': 'January', 'value': '1'},
-       {'label': 'February', 'value': '2'},
-       {'label': 'March', 'value': '3'},
-       {'label': 'April', 'value': '4'},
-       {'label': 'May', 'value': '5'},
-       {'label': 'June', 'value': '6'},
-       {'label': 'July', 'value': '7'},
-       {'label': 'August', 'value': '8'},
-       {'label': 'September', 'value': '9'},
-       {'label': 'October', 'value': '10'},
-       {'label': 'November', 'value': '11'},
-       {'label': 'December', 'value': '12'}
-   ],
-   value='1'
-)'''
 
 @callback(
     Output('tabs-example-content-1', 'children'),
@@ -75,13 +63,13 @@ def render_content(tab):
         dcc.Graph(id='zip-prop-type-sold-per-year'),
         dcc.Graph(id='zip-prop-price-by-year')        
         ])
+    
     elif tab == "tab-4":
         return html.Div([
         html.H2('Location-Data'),
         dcc.Input(id="location-name", type='text', placeholder="Market", value="North Tacoma", debounce=True),
         html.Div([dcc.Graph(id) for id in LOCATION_GRAPHS]),
         ])
-
 
 @callback([Output(id, 'figure') for id in ZIP_GRAPHS],
     Output('zip-sales-by-year', 'figure'),
@@ -91,7 +79,7 @@ def render_content(tab):
     Input('prop-year', 'value')
 )
 def zip_div(postal_code, prop_year):
-    con = sqlite3.connect('rf_data.db')
+    con = sqlite3.connect(DB_PATH)
     zip_df = pd.read_sql(('SELECT *  FROM sold_properties WHERE postal_code LIKE (?)'), con, params=(postal_code,))
     con.close()
     graphs = compile_graphs(zip_df, postal_code)
@@ -111,7 +99,7 @@ def zip_div(postal_code, prop_year):
     Input('state-name', 'value')
 )
 def state_div(state_name):
-    con = sqlite3.connect('rf_data.db')
+    con = sqlite3.connect(DB_PATH)
     state_df = pd.read_sql(('SELECT *  FROM sold_properties WHERE state_prov = (?)'), con, params=(state_name,))
     con.close()
     graphs = compile_graphs(state_df, state_name)
@@ -122,7 +110,7 @@ def state_div(state_name):
     Input('state-abbreviation-city', 'value')
 )
 def city_div(city_name, state_name):
-    con = sqlite3.connect('rf_data.db')
+    con = sqlite3.connect(DB_PATH)
     city_df = pd.read_sql(('SELECT *  FROM sold_properties WHERE state_prov = (?) AND city = (?)'), con, params=(state_name, city_name))
     con.close()
     graphs = compile_graphs(city_df, city_name)
@@ -134,7 +122,7 @@ def city_div(city_name, state_name):
     Input('location-name', 'value')
 )
 def market_div(market_name):
-    con = sqlite3.connect('rf_data.db')
+    con = sqlite3.connect(DB_PATH)
     market_df = pd.read_sql(('SELECT *  FROM sold_properties WHERE location = (?)'), con, params=(market_name,))
     con.close()
     graphs = compile_graphs(market_df, market_name)

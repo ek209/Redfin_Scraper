@@ -7,6 +7,10 @@ import pandas as pd
 from io import StringIO
 from datetime import date
 
+#TODO Continue loading regions and data
+#TODO Add logic to add last updated to each region
+#TODO Docstrings, comments
+
 #for_sale_url = f'https://www.redfin.com/stingray/api/gis-csv?al=2&has_deal=false&has_dishwasher=false&has_laundry_facility=false&has_laundry_hookups=false&has_parking=false&has_pool=false&has_short_term_lease=false&include_pending_homes=false&isRentals=false&is_furnished=false&num_homes=35000&ord=redfin-recommended-asc&page_number=1&region_id={region_id}&region_type={region_type_id}&status=9&travel_with_traffic=false&travel_within_region=false&uipt=1,2,3,4,5,6,7,8&utilities_included=false&v=8'
 def read_data(id, region_type_id):
     resp = requests.get(f'https://www.redfin.com/stingray/do/query-regionid?region_id={id}&region_type={region_type_id}')
